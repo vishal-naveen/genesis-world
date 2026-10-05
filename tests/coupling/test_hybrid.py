@@ -5,7 +5,10 @@ import numpy as np
 import pytest
 import torch
 
+import trimesh
+
 import genesis as gs
+import genesis.utils.geom as gu
 from genesis.utils.misc import tensor_to_array
 
 from ..utils.assertions import assert_allclose
@@ -66,6 +69,22 @@ def test_rigid_mpm_muscle(show_viewer):
             thickness=0.05,
         ),
     )
+
+    # Soft particles must be sampled around each rigid link, not inside it
+    particles = np.asarray(robot.part_soft.init_particles)
+    group_ids = np.asarray(robot.part_soft.mesh_set_group_ids)
+    links = [link for link in robot.part_rigid.links if len(link.geoms) > 0]
+    assert len(particles) > 0
+    assert len(np.unique(group_ids)) == len(links)
+    for i_link, link in enumerate(links):
+        geom = link.geoms[0]
+        pos, quat = gu.transform_pos_quat_by_trans_quat(
+            geom.init_pos, geom.init_quat, link.init_x_pos, link.init_x_quat
+        )
+        verts = gu.transform_by_trans_quat(np.asarray(geom.init_verts, dtype=float), pos, quat)
+        rigid_mesh = trimesh.Trimesh(vertices=verts, faces=geom.init_faces, process=False)
+        assert not rigid_mesh.contains(particles[group_ids == i_link]).any()
+
     ball = scene.add_entity(
         morph=gs.morphs.Sphere(
             pos=BALL_POS_INIT,

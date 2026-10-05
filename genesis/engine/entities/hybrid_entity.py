@@ -561,8 +561,8 @@ def default_func_instantiate_soft_from_rigid(scene, part_rigid, material_soft, m
         )
         outer_verts = verts + inner_mesh.vertex_normals * material_hybrid.thickness
         outer_mesh = trimesh.Trimesh(vertices=outer_verts, faces=geom.init_faces)
-        # mesh = trimesh.boolean.difference([outer_mesh, inner_mesh]) # wrap around the rigid link
-        mesh = outer_mesh  # FIXME: hack to avoid `ValueError: No backends available for boolean operations!`
+        # Hollow shell wrapping the rigid link: the inner surface is flipped so that its inside is the cavity
+        mesh = trimesh.util.concatenate([outer_mesh, trimesh.Trimesh(vertices=verts, faces=geom.init_faces[:, ::-1])])
 
         meshes.append(mesh)
         trans_local_to_global.append(trans)
