@@ -362,12 +362,27 @@ def test_fluid_emitter(n_envs, material_type, show_viewer):
             color=(0.7, 0.85, 1.0, 0.7),
         ),
     )
+    emitter_recycled = scene.add_emitter(
+        material=material_type(
+            sampler="regular",
+        ),
+        max_particles=5000,
+    )
     scene.build(n_envs=n_envs)
 
     emitter.emit_omni()
     for i in range(5):
         emitter.emit(droplet_shape="circle", droplet_size=0.25)
         scene.step()
+    scene.step()
+
+    # A droplet larger than the remaining capacity must be recycled from the first particle
+    emitter_recycled.emit(droplet_shape="circle", droplet_size=0.25, droplet_length=0.05, pos=(0.5, -1.0, 1.0))
+    n_particles_large = emitter_recycled.next_particle
+    while emitter_recycled.next_particle + n_particles_large <= emitter_recycled.max_particles:
+        emitter_recycled.emit(droplet_shape="circle", droplet_size=0.1, droplet_length=0.05, pos=(0.5, -1.0, 1.0))
+    emitter_recycled.emit(droplet_shape="circle", droplet_size=0.25, droplet_length=0.05, pos=(0.5, -1.0, 1.0))
+    assert emitter_recycled.next_particle == n_particles_large
     scene.step()
 
 
